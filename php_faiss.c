@@ -1,0 +1,446 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "php.h"
+#include "zend_exceptions.h"
+#include "php_faiss.h"
+#include "ext/standard/info.h"
+
+zend_class_entry *php_faiss_index_ce;
+
+static zend_object_handlers php_faiss_index_object_handlers;
+
+#define Z_FAISS_INDEX_P(zv) php_faiss_index_fetch_object(Z_OBJ_P(zv))
+
+static inline php_faiss_index_object *php_faiss_index_fetch_object(zend_object *obj)
+{
+	return (php_faiss_index_object *)((char *)(obj) - XtOffsetOf(php_faiss_index_object, std));
+}
+
+static void php_faiss_index_free_obj(zend_object *object)
+{
+	php_faiss_index_object *intern = php_faiss_index_fetch_object(object);
+
+	if (intern->index) {
+		faiss_Index_free(intern->index);
+		intern->index = NULL;
+	}
+	zend_object_std_dtor(object);
+}
+
+static zend_object *php_faiss_index_create_object(zend_class_entry *class_type)
+{
+	php_faiss_index_object *intern = zend_object_alloc(sizeof(php_faiss_index_object), class_type);
+
+	zend_object_std_init(&intern->std, class_type);
+	object_properties_init(&intern->std, class_type);
+	intern->index = NULL;
+	intern->dimension = 0;
+	intern->std.handlers = &php_faiss_index_object_handlers;
+
+	return &intern->std;
+}
+
+static int php_faiss_array_to_floats(zval *arr, float **out, size_t *out_len)
+{
+	HashTable *ht = Z_ARRVAL_P(arr);
+	zend_ulong num_idx;
+	zend_string *str_idx;
+	zval *val;
+	size_t i = 0;
+
+	*out_len = zend_hash_num_elements(ht);
+	*out = ecalloc(*out_len, sizeof(float));
+
+	ZEND_HASH_FOREACH_KEY_VAL(ht, num_idx, str_idx, val) {
+		if (Z_TYPE_P(val) != IS_DOUBLE && Z_TYPE_P(val) != IS_LONG) {
+			efree(*out);
+			*out = NULL;
+			return FAILURE;
+		}
+		(*out)[i++] = (float)zval_get_double(val);
+	} ZEND_HASH_FOREACH_END();
+
+	return SUCCESS;
+}
+
+static php_faiss_index_object *php_faiss_index_from_zend(zend_object *obj)
+{
+	php_faiss_index_object *intern = php_faiss_index_fetch_object(obj);
+
+	if (!intern->index) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "FaissIndex is not initialized");
+		return NULL;
+	}
+
+	return intern;
+}
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_faiss_create, 0, 1, FaissIndex, 0)
+	ZEND_ARG_TYPE_INFO(0, dimension, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_faiss_load, 0, 1, FaissIndex, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_add, 0, 1, IS_VOID, 0)
+	ZEND_ARG_ARRAY_INFO(0, vector, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_add_batch, 0, 2, IS_VOID, 0)
+	ZEND_ARG_ARRAY_INFO(0, flat, 0)
+	ZEND_ARG_TYPE_INFO(0, dimension, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_count, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_dimension, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_save, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_faiss_search, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_ARRAY_INFO(0, query, 0)
+	ZEND_ARG_TYPE_INFO(0, k, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+PHP_METHOD(FaissIndex, create)
+{
+	zend_long dim;
+	FaissIndexHNSW hnsw = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(dim)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (dim <= 0) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "dimension must be positive");
+		RETURN_THROWS();
+	}
+
+	if (faiss_IndexHNSWFlat_new(&hnsw, dim, 16) != 0 || !hnsw) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_IndexHNSWFlat_new failed");
+		RETURN_THROWS();
+	}
+
+	object_init_ex(return_value, php_faiss_index_ce);
+	{
+		php_faiss_index_object *intern = Z_FAISS_INDEX_P(return_value);
+		intern->index = (FaissIndex)hnsw;
+		intern->dimension = (int)dim;
+	}
+}
+
+PHP_METHOD(FaissIndex, load)
+{
+	char *path;
+	size_t path_len;
+	FaissIndex index = NULL;
+	int d;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STRING(path, path_len)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (faiss_read_index_fname(path, 0, &index) != 0 || !index) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "Cannot load FAISS index: %s", path);
+		RETURN_THROWS();
+	}
+
+	d = faiss_Index_d(index);
+	if (d <= 0) {
+		faiss_Index_free(index);
+		zend_throw_exception_ex(zend_ce_exception, 0, "Invalid index dimension");
+		RETURN_THROWS();
+	}
+
+	object_init_ex(return_value, php_faiss_index_ce);
+	{
+		php_faiss_index_object *intern = Z_FAISS_INDEX_P(return_value);
+		intern->index = index;
+		intern->dimension = d;
+	}
+}
+
+PHP_METHOD(FaissIndex, add)
+{
+	zval *vector_arr;
+	float *data = NULL;
+	size_t len = 0;
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ARRAY(vector_arr)
+	ZEND_PARSE_PARAMETERS_END();
+
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
+		RETURN_THROWS();
+	}
+
+	if (php_faiss_array_to_floats(vector_arr, &data, &len) == FAILURE || !data) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "vector must be an array of numbers");
+		RETURN_THROWS();
+	}
+
+	if ((zend_long)len != intern->dimension) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "vector length %zu does not match index dimension %d",
+			len, intern->dimension);
+		RETURN_THROWS();
+	}
+
+	if (faiss_Index_add(intern->index, 1, data) != 0) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_Index_add failed");
+		RETURN_THROWS();
+	}
+
+	efree(data);
+}
+
+PHP_METHOD(FaissIndex, addBatch)
+{
+	zval *flat_arr;
+	zend_long dim;
+	float *data = NULL;
+	size_t len = 0;
+	int64_t n;
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_ARRAY(flat_arr)
+		Z_PARAM_LONG(dim)
+	ZEND_PARSE_PARAMETERS_END();
+
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
+		RETURN_THROWS();
+	}
+
+	if (dim <= 0) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "dimension must be positive");
+		RETURN_THROWS();
+	}
+
+	if (php_faiss_array_to_floats(flat_arr, &data, &len) == FAILURE || !data) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "flat must be an array of numbers");
+		RETURN_THROWS();
+	}
+
+	if (len % (size_t)dim != 0) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "flat length %zu is not a multiple of dimension %ld",
+			len, dim);
+		RETURN_THROWS();
+	}
+
+	if ((int)dim != intern->dimension) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "batch dimension %ld does not match index dimension %d",
+			dim, intern->dimension);
+		RETURN_THROWS();
+	}
+
+	n = (int64_t)(len / (size_t)dim);
+	if (faiss_Index_add(intern->index, n, data) != 0) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_Index_add failed");
+		RETURN_THROWS();
+	}
+
+	efree(data);
+}
+
+PHP_METHOD(FaissIndex, count)
+{
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
+		RETURN_THROWS();
+	}
+
+	RETURN_LONG((zend_long)faiss_Index_ntotal(intern->index));
+}
+
+PHP_METHOD(FaissIndex, dimension)
+{
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	intern = php_faiss_index_fetch_object(Z_OBJ_P(ZEND_THIS));
+	if (!intern->index) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "FaissIndex is not initialized");
+		RETURN_THROWS();
+	}
+
+	RETURN_LONG((zend_long)intern->dimension);
+}
+
+PHP_METHOD(FaissIndex, save)
+{
+	char *path;
+	size_t path_len;
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STRING(path, path_len)
+	ZEND_PARSE_PARAMETERS_END();
+
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
+		RETURN_THROWS();
+	}
+
+	if (faiss_write_index_fname(intern->index, path) != 0) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "Cannot save FAISS index: %s", path);
+		RETURN_THROWS();
+	}
+}
+
+PHP_METHOD(FaissIndex, search)
+{
+	zval *query_arr;
+	zend_long k;
+	float *data = NULL;
+	size_t len = 0;
+	float *distances = NULL;
+	int64_t *labels = NULL;
+	zend_long i;
+	php_faiss_index_object *intern;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_ARRAY(query_arr)
+		Z_PARAM_LONG(k)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (k <= 0) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "k must be positive");
+		RETURN_THROWS();
+	}
+
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
+		RETURN_THROWS();
+	}
+
+	if (php_faiss_array_to_floats(query_arr, &data, &len) == FAILURE || !data) {
+		zend_throw_exception_ex(zend_ce_exception, 0, "query must be an array of numbers");
+		RETURN_THROWS();
+	}
+
+	if ((zend_long)len != intern->dimension) {
+		efree(data);
+		zend_throw_exception_ex(zend_ce_exception, 0, "query length %zu does not match index dimension %d",
+			len, intern->dimension);
+		RETURN_THROWS();
+	}
+
+	distances = ecalloc((size_t)k, sizeof(float));
+	labels = ecalloc((size_t)k, sizeof(int64_t));
+
+	if (faiss_Index_search(intern->index, 1, data, (int64_t)k, distances, labels) != 0) {
+		efree(data);
+		efree(distances);
+		efree(labels);
+		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_Index_search failed");
+		RETURN_THROWS();
+	}
+
+	array_init(return_value);
+	for (i = 0; i < k; i++) {
+		if (labels[i] < 0) {
+			continue;
+		}
+		zval item;
+		array_init(&item);
+		add_assoc_long(&item, "id", (zend_long)labels[i]);
+		add_assoc_double(&item, "distance", (double)distances[i]);
+		add_next_index_zval(return_value, &item);
+	}
+
+	efree(data);
+	efree(distances);
+	efree(labels);
+}
+
+static const zend_function_entry php_faiss_index_methods[] = {
+	PHP_ME(FaissIndex, create, arginfo_faiss_create, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	PHP_ME(FaissIndex, load, arginfo_faiss_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	PHP_ME(FaissIndex, add, arginfo_faiss_add, ZEND_ACC_PUBLIC)
+	PHP_ME(FaissIndex, addBatch, arginfo_faiss_add_batch, ZEND_ACC_PUBLIC)
+	PHP_ME(FaissIndex, count, arginfo_faiss_count, ZEND_ACC_PUBLIC)
+	PHP_ME(FaissIndex, dimension, arginfo_faiss_dimension, ZEND_ACC_PUBLIC)
+	PHP_ME(FaissIndex, save, arginfo_faiss_save, ZEND_ACC_PUBLIC)
+	PHP_ME(FaissIndex, search, arginfo_faiss_search, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+};
+
+static const zend_function_entry faiss_functions[] = {
+	PHP_FE_END
+};
+
+PHP_MINIT_FUNCTION(faiss)
+{
+	zend_class_entry ce;
+
+	INIT_CLASS_ENTRY(ce, "FaissIndex", php_faiss_index_methods);
+	php_faiss_index_ce = zend_register_internal_class_ex(&ce, NULL);
+	php_faiss_index_ce->create_object = php_faiss_index_create_object;
+
+	memcpy(&php_faiss_index_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_faiss_index_object_handlers.offset = XtOffsetOf(php_faiss_index_object, std);
+	php_faiss_index_object_handlers.free_obj = php_faiss_index_free_obj;
+	php_faiss_index_object_handlers.clone_obj = NULL;
+
+	return SUCCESS;
+}
+
+PHP_MSHUTDOWN_FUNCTION(faiss)
+{
+	return SUCCESS;
+}
+
+PHP_RINIT_FUNCTION(faiss)
+{
+	return SUCCESS;
+}
+
+PHP_RSHUTDOWN_FUNCTION(faiss)
+{
+	return SUCCESS;
+}
+
+PHP_MINFO_FUNCTION(faiss)
+{
+	php_info_print_table_start();
+	php_info_print_table_header(2, "faiss support", "enabled");
+	php_info_print_table_row(2, "Version", PHP_FAISS_VERSION);
+	php_info_print_table_end();
+}
+
+zend_module_entry faiss_module_entry = {
+	STANDARD_MODULE_HEADER,
+	"faiss",
+	faiss_functions,
+	PHP_MINIT(faiss),
+	PHP_MSHUTDOWN(faiss),
+	PHP_RINIT(faiss),
+	PHP_RSHUTDOWN(faiss),
+	PHP_MINFO(faiss),
+	PHP_FAISS_VERSION,
+	STANDARD_MODULE_PROPERTIES
+};
+
+#ifdef COMPILE_DL_FAISS
+ZEND_GET_MODULE(faiss)
+#endif
