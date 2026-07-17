@@ -1,6 +1,8 @@
 /configure
 /Makefile
 /config.h
+/config.h.in
+/configure.ac
 /config.nice
 /config.status
 /config.log
