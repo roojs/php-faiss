@@ -12,17 +12,24 @@ Sibling repo at `gitlive/php-fiass` (used by `Pman.Translate` RAG indexer).
 
 Build on **each host** against that host’s PHP — do not copy `faiss.so` between machines.
 
-## Build / install
+## Build
 
 ```bash
 cd php-fiass
-./build.sh              # phpize + configure + make; smoke-tests modules/faiss.so
-./build.sh --install    # same + sudo make install
+phpize
+./configure --enable-faiss
+make -j$(nproc)
 ```
 
 Output: `modules/faiss.so`
 
-After `--install`, enable in `php.ini` / conf.d if needed:
+Optional install:
+
+```bash
+sudo make install
+```
+
+Or enable in `php.ini` / conf.d:
 
 ```ini
 extension=faiss
@@ -35,16 +42,6 @@ extension=/path/to/php-fiass/modules/faiss.so
 ```
 
 Restart php-fpm / Apache after enabling for those SAPIs.
-
-### Manual fallback
-
-```bash
-cd php-fiass
-phpize
-./configure --enable-faiss
-make -j$(nproc)
-# optional: sudo make install
-```
 
 ## API
 
