@@ -10,27 +10,40 @@ Sibling repo at `gitlive/php-fiass` (used by `Pman.Translate` RAG indexer).
 - `libfaiss-dev` and runtime BLAS/LAPACK (`libblas-dev`, `liblapack-dev` — pulled in by `libfaiss-dev` on Ubuntu)
 - `build-essential`, `g++`
 
-## Build
+Build on **each host** against that host’s PHP — do not copy `faiss.so` between machines.
+
+## Build / install
+
+```bash
+cd php-fiass
+./build.sh              # phpize + configure + make; smoke-tests modules/faiss.so
+./build.sh --install    # same + sudo make install
+```
+
+Output: `modules/faiss.so`
+
+After `--install`, enable in `php.ini` / conf.d if needed:
+
+```ini
+extension=faiss
+```
+
+Or load the built path without installing:
+
+```ini
+extension=/path/to/php-fiass/modules/faiss.so
+```
+
+Restart php-fpm / Apache after enabling for those SAPIs.
+
+### Manual fallback
 
 ```bash
 cd php-fiass
 phpize
 ./configure --enable-faiss
 make -j$(nproc)
-```
-
-Output: `modules/faiss.so`
-
-Optional install:
-
-```bash
-sudo make install
-```
-
-Or enable in `php.ini`:
-
-```ini
-extension=/path/to/php-fiass/modules/faiss.so
+# optional: sudo make install
 ```
 
 ## API
