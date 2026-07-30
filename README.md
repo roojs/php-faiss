@@ -54,5 +54,8 @@ Restart php-fpm / Apache after enabling for those SAPIs.
 | `count(): int` | `ntotal` — next sequential label |
 | `save(string $path)` | Persist index |
 | `search(array $query, int $k): array` | `[['id'=>int,'distance'=>float], …]` |
+| `searchWithIds(array $query, int $k, array $ids): array` | Same hit shape; restrict to `ids` via `IDSelectorBatch`. Empty `$ids` → `[]`. |
+
+Rebuild/reload `faiss.so` on each host after pulling this change.
 
 PHP wrapper: `Pman.Translate/RAG/Faiss.php` (`Pman_Translate_RAG_Faiss`).
