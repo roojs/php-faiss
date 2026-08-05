@@ -446,7 +446,7 @@ PHP_METHOD(FaissIndex, searchWithIds)
 		RETURN_THROWS();
 	}
 
-	if (faiss_IDSelectorBatch_new(&sel, n_ids, ids) != 0 || !sel) {
+	if (faiss_IDSelectorBatch_new((FaissIDSelector**)&sel, n_ids, ids) != 0 || !sel) {
 		efree(ids);
 		efree(data);
 		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_IDSelectorBatch_new failed");
