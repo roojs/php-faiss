@@ -17,7 +17,6 @@ typedef struct {
 extern zend_class_entry *php_faiss_index_ce;
 
 PHP_MINIT_FUNCTION(faiss);
-PHP_MSHUTDOWN_FUNCTION(faiss);
 PHP_MINFO_FUNCTION(faiss);
 
 #endif
