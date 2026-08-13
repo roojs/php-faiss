@@ -246,72 +246,6 @@ PHP_METHOD(FaissIndex, save)
 	}
 }
 
-PHP_METHOD(FaissIndex, search)
-{
-	zval *query_arr;
-	zend_long k;
-	float *data = NULL;
-	size_t len = 0;
-	float *distances = NULL;
-	int64_t *labels = NULL;
-	zend_long i;
-	php_faiss_index_object *intern;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_ARRAY(query_arr)
-		Z_PARAM_LONG(k)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if (k <= 0) {
-		zend_throw_exception_ex(zend_ce_exception, 0, "k must be positive");
-		RETURN_THROWS();
-	}
-
-	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
-	if (!intern) {
-		RETURN_THROWS();
-	}
-
-	if (php_faiss_array_to_floats(query_arr, &data, &len) == FAILURE || !data) {
-		zend_throw_exception_ex(zend_ce_exception, 0, "query must be an array of numbers");
-		RETURN_THROWS();
-	}
-
-	if ((zend_long)len != intern->dimension) {
-		efree(data);
-		zend_throw_exception_ex(zend_ce_exception, 0, "query length %zu does not match index dimension %d",
-			len, intern->dimension);
-		RETURN_THROWS();
-	}
-
-	distances = ecalloc((size_t)k, sizeof(float));
-	labels = ecalloc((size_t)k, sizeof(int64_t));
-
-	if (faiss_Index_search(intern->index, 1, data, (int64_t)k, distances, labels) != 0) {
-		efree(data);
-		efree(distances);
-		efree(labels);
-		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_Index_search failed");
-		RETURN_THROWS();
-	}
-
-	array_init(return_value);
-	for (i = 0; i < k; i++) {
-		if (labels[i] < 0) {
-			continue;
-		}
-		zval item;
-		array_init(&item);
-		add_assoc_long(&item, "id", (zend_long)labels[i]);
-		add_assoc_double(&item, "distance", (double)distances[i]);
-		add_next_index_zval(return_value, &item);
-	}
-
-	efree(data);
-	efree(distances);
-	efree(labels);
-}
-
 PHP_METHOD(FaissIndex, searchWithIds)
 {
 	zval *query_arr;
@@ -426,7 +360,6 @@ static const zend_function_entry php_faiss_index_methods[] = {
 	PHP_ME(FaissIndex, count, arginfo_faiss_count, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, dimension, arginfo_faiss_dimension, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, save, arginfo_faiss_save, ZEND_ACC_PUBLIC)
-	PHP_ME(FaissIndex, search, arginfo_faiss_search, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, searchWithIds, arginfo_faiss_search_with_ids, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
