@@ -10,7 +10,7 @@ $vec = array(1.0, 0.0, 0.0, 0.0);
 $idx->add($vec);
 assert($idx->count() === 1, 'count after add');
 
-$hits = $idx->search($vec, 1);
+$hits = $idx->searchWithIds($vec, 1, array(0));
 assert(count($hits) === 1, 'one search hit');
 assert($hits[0]['id'] === 0, 'label 0 for first vector');
 

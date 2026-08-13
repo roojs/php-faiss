@@ -53,8 +53,7 @@ Restart php-fpm / Apache after enabling for those SAPIs.
 | `add(array $vector)` | Add one vector |
 | `count(): int` | `ntotal` — next sequential label |
 | `save(string $path)` | Persist index |
-| `search(array $query, int $k): array` | `[['id'=>int,'distance'=>float], …]` |
-| `searchWithIds(array $query, int $k, array $ids): array` | Same hit shape; restrict to `ids` via `IDSelectorBatch`. Empty `$ids` → `[]`. |
+| `searchWithIds(array $query, int $k, array $ids): array` | `[['id'=>int,'distance'=>float], …]`; restrict to `ids` via `IDSelectorBatch`. Empty `$ids` → `[]`. |
 
 Rebuild/reload `faiss.so` on each host after pulling this change.
 
