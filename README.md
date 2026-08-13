@@ -51,7 +51,6 @@ Restart php-fpm / Apache after enabling for those SAPIs.
 | `FaissIndex::create(int $dim)` | New HNSWFlat index (M=16) |
 | `FaissIndex::load(string $path)` | Load from disk |
 | `add(array $vector)` | Add one vector |
-| `addBatch(array $flat, int $dim)` | Add N vectors from flat array |
 | `count(): int` | `ntotal` — next sequential label |
 | `save(string $path)` | Persist index |
 | `search(array $query, int $k): array` | `[['id'=>int,'distance'=>float], …]` |
