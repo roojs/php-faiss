@@ -121,7 +121,7 @@ PHP_METHOD(FaissIndex, create)
 	object_init_ex(return_value, php_faiss_index_ce);
 	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
 		- XtOffsetOf(php_faiss_index_object, std));
-	intern->index = (FaissIndex)hnsw;
+	intern->index = hnsw;
 	intern->dimension = dim;
 }
 
