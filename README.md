@@ -52,6 +52,7 @@ Restart php-fpm / Apache after enabling for those SAPIs.
 | `FaissIndex::load(string $path)` | Load from disk |
 | `add(array $vector)` | Add one vector |
 | `count(): int` | `ntotal` — next sequential label |
+| `dimension(): int` | Index dimension |
 | `save(string $path)` | Persist index |
 | `searchWithIds(array $query, int $k, array $ids): array` | `[['id'=>int,'distance'=>float], …]`; restrict to `ids` via `IDSelectorBatch`. Empty `$ids` → `[]`. |
 

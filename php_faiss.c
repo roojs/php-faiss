@@ -215,10 +215,8 @@ PHP_METHOD(FaissIndex, dimension)
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
-	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(ZEND_THIS))
-		- XtOffsetOf(php_faiss_index_object, std));
-	if (!intern->index) {
-		zend_throw_exception_ex(zend_ce_exception, 0, "FaissIndex is not initialized");
+	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
+	if (!intern) {
 		RETURN_THROWS();
 	}
 
