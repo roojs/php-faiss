@@ -39,15 +39,13 @@ static zend_object *php_faiss_index_create_object(zend_class_entry *class_type)
 static int php_faiss_array_to_floats(zval *arr, float **out, size_t *out_len)
 {
 	HashTable *ht = Z_ARRVAL_P(arr);
-	zend_ulong num_idx;
-	zend_string *str_idx;
 	zval *val;
 	size_t i = 0;
 
 	*out_len = zend_hash_num_elements(ht);
 	*out = ecalloc(*out_len, sizeof(float));
 
-	ZEND_HASH_FOREACH_KEY_VAL(ht, num_idx, str_idx, val) {
+	ZEND_HASH_FOREACH_VAL(ht, val) {
 		if (Z_TYPE_P(val) != IS_DOUBLE && Z_TYPE_P(val) != IS_LONG) {
 			efree(*out);
 			*out = NULL;
@@ -124,7 +122,7 @@ PHP_METHOD(FaissIndex, create)
 	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
 		- XtOffsetOf(php_faiss_index_object, std));
 	intern->index = (FaissIndex)hnsw;
-	intern->dimension = (int)dim;
+	intern->dimension = dim;
 }
 
 PHP_METHOD(FaissIndex, load)
@@ -179,7 +177,7 @@ PHP_METHOD(FaissIndex, add)
 		RETURN_THROWS();
 	}
 
-	if ((zend_long)len != intern->dimension) {
+	if (len != intern->dimension) {
 		efree(data);
 		zend_throw_exception_ex(zend_ce_exception, 0, "vector length %zu does not match index dimension %d",
 			len, intern->dimension);
@@ -206,7 +204,7 @@ PHP_METHOD(FaissIndex, count)
 		RETURN_THROWS();
 	}
 
-	RETURN_LONG((zend_long)faiss_Index_ntotal(intern->index));
+	RETURN_LONG(faiss_Index_ntotal(intern->index));
 }
 
 PHP_METHOD(FaissIndex, dimension)
