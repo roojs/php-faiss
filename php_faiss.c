@@ -524,16 +524,6 @@ PHP_MSHUTDOWN_FUNCTION(faiss)
 	return SUCCESS;
 }
 
-PHP_RINIT_FUNCTION(faiss)
-{
-	return SUCCESS;
-}
-
-PHP_RSHUTDOWN_FUNCTION(faiss)
-{
-	return SUCCESS;
-}
-
 PHP_MINFO_FUNCTION(faiss)
 {
 	php_info_print_table_start();
@@ -548,8 +538,8 @@ zend_module_entry faiss_module_entry = {
 	faiss_functions,
 	PHP_MINIT(faiss),
 	PHP_MSHUTDOWN(faiss),
-	PHP_RINIT(faiss),
-	PHP_RSHUTDOWN(faiss),
+	NULL,
+	NULL,
 	PHP_MINFO(faiss),
 	PHP_FAISS_VERSION,
 	STANDARD_MODULE_PROPERTIES
