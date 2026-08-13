@@ -218,7 +218,7 @@ PHP_METHOD(FaissIndex, dimension)
 		RETURN_THROWS();
 	}
 
-	RETURN_LONG((zend_long)intern->dimension);
+	RETURN_LONG(intern->dimension);
 }
 
 PHP_METHOD(FaissIndex, save)
@@ -255,8 +255,6 @@ PHP_METHOD(FaissIndex, searchWithIds)
 	int64_t n_ids = 0;
 	zend_long i;
 	HashTable *ht;
-	zend_ulong num_idx;
-	zend_string *str_idx;
 	zval *val;
 	FaissIDSelector sel = NULL;
 	php_faiss_index_object *intern;
@@ -278,21 +276,21 @@ PHP_METHOD(FaissIndex, searchWithIds)
 	}
 
 	ht = Z_ARRVAL_P(ids_arr);
-	n_ids = (int64_t)zend_hash_num_elements(ht);
+	n_ids = zend_hash_num_elements(ht);
 	if (n_ids <= 0) {
 		array_init(return_value);
 		return;
 	}
 
-	ids = ecalloc((size_t)n_ids, sizeof(int64_t));
+	ids = ecalloc(n_ids, sizeof(int64_t));
 	i = 0;
-	ZEND_HASH_FOREACH_KEY_VAL(ht, num_idx, str_idx, val) {
+	ZEND_HASH_FOREACH_VAL(ht, val) {
 		if (Z_TYPE_P(val) != IS_LONG && Z_TYPE_P(val) != IS_DOUBLE) {
 			efree(ids);
 			zend_throw_exception_ex(zend_ce_exception, 0, "ids must be an array of integers");
 			RETURN_THROWS();
 		}
-		ids[i++] = (int64_t)zval_get_long(val);
+		ids[i++] = zval_get_long(val);
 	} ZEND_HASH_FOREACH_END();
 
 	if (php_faiss_array_to_floats(query_arr, &data, &len) == FAILURE || !data) {
@@ -301,7 +299,7 @@ PHP_METHOD(FaissIndex, searchWithIds)
 		RETURN_THROWS();
 	}
 
-	if ((zend_long)len != intern->dimension) {
+	if (len != intern->dimension) {
 		efree(ids);
 		efree(data);
 		zend_throw_exception_ex(zend_ce_exception, 0, "query length %zu does not match index dimension %d",
@@ -316,10 +314,10 @@ PHP_METHOD(FaissIndex, searchWithIds)
 		RETURN_THROWS();
 	}
 
-	distances = ecalloc((size_t)k, sizeof(float));
-	labels = ecalloc((size_t)k, sizeof(int64_t));
+	distances = ecalloc(k, sizeof(float));
+	labels = ecalloc(k, sizeof(int64_t));
 
-	if (faiss_Index_search_with_ids(intern->index, 1, data, (int64_t)k, sel, distances, labels) != 0) {
+	if (faiss_Index_search_with_ids(intern->index, 1, data, k, sel, distances, labels) != 0) {
 		faiss_IDSelector_free(sel);
 		efree(ids);
 		efree(data);
@@ -340,8 +338,8 @@ PHP_METHOD(FaissIndex, searchWithIds)
 		}
 		zval item;
 		array_init(&item);
-		add_assoc_long(&item, "id", (zend_long)labels[i]);
-		add_assoc_double(&item, "distance", (double)distances[i]);
+		add_assoc_long(&item, "id", labels[i]);
+		add_assoc_double(&item, "distance", distances[i]);
 		add_next_index_zval(return_value, &item);
 	}
 
