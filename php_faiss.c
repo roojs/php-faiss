@@ -114,6 +114,7 @@ PHP_METHOD(FaissIndex, create)
 {
 	zend_long dim;
 	FaissIndexHNSW hnsw = NULL;
+	php_faiss_index_object *intern;
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_LONG(dim)
@@ -130,12 +131,10 @@ PHP_METHOD(FaissIndex, create)
 	}
 
 	object_init_ex(return_value, php_faiss_index_ce);
-	{
-		php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
-			- XtOffsetOf(php_faiss_index_object, std));
-		intern->index = (FaissIndex)hnsw;
-		intern->dimension = (int)dim;
-	}
+	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
+		- XtOffsetOf(php_faiss_index_object, std));
+	intern->index = (FaissIndex)hnsw;
+	intern->dimension = (int)dim;
 }
 
 PHP_METHOD(FaissIndex, load)
@@ -144,6 +143,7 @@ PHP_METHOD(FaissIndex, load)
 	size_t path_len;
 	FaissIndex index = NULL;
 	int d;
+	php_faiss_index_object *intern;
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_STRING(path, path_len)
@@ -162,12 +162,10 @@ PHP_METHOD(FaissIndex, load)
 	}
 
 	object_init_ex(return_value, php_faiss_index_ce);
-	{
-		php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
-			- XtOffsetOf(php_faiss_index_object, std));
-		intern->index = index;
-		intern->dimension = d;
-	}
+	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
+		- XtOffsetOf(php_faiss_index_object, std));
+	intern->index = index;
+	intern->dimension = d;
 }
 
 PHP_METHOD(FaissIndex, add)
