@@ -11,16 +11,10 @@ zend_class_entry *php_faiss_index_ce;
 
 static zend_object_handlers php_faiss_index_object_handlers;
 
-#define Z_FAISS_INDEX_P(zv) php_faiss_index_fetch_object(Z_OBJ_P(zv))
-
-static inline php_faiss_index_object *php_faiss_index_fetch_object(zend_object *obj)
-{
-	return (php_faiss_index_object *)((char *)(obj) - XtOffsetOf(php_faiss_index_object, std));
-}
-
 static void php_faiss_index_free_obj(zend_object *object)
 {
-	php_faiss_index_object *intern = php_faiss_index_fetch_object(object);
+	php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(object)
+		- XtOffsetOf(php_faiss_index_object, std));
 
 	if (intern->index) {
 		faiss_Index_free(intern->index);
@@ -67,7 +61,8 @@ static int php_faiss_array_to_floats(zval *arr, float **out, size_t *out_len)
 
 static php_faiss_index_object *php_faiss_index_from_zend(zend_object *obj)
 {
-	php_faiss_index_object *intern = php_faiss_index_fetch_object(obj);
+	php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(obj)
+		- XtOffsetOf(php_faiss_index_object, std));
 
 	if (!intern->index) {
 		zend_throw_exception_ex(zend_ce_exception, 0, "FaissIndex is not initialized");
@@ -136,7 +131,8 @@ PHP_METHOD(FaissIndex, create)
 
 	object_init_ex(return_value, php_faiss_index_ce);
 	{
-		php_faiss_index_object *intern = Z_FAISS_INDEX_P(return_value);
+		php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
+			- XtOffsetOf(php_faiss_index_object, std));
 		intern->index = (FaissIndex)hnsw;
 		intern->dimension = (int)dim;
 	}
@@ -167,7 +163,8 @@ PHP_METHOD(FaissIndex, load)
 
 	object_init_ex(return_value, php_faiss_index_ce);
 	{
-		php_faiss_index_object *intern = Z_FAISS_INDEX_P(return_value);
+		php_faiss_index_object *intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(return_value))
+			- XtOffsetOf(php_faiss_index_object, std));
 		intern->index = index;
 		intern->dimension = d;
 	}
@@ -283,7 +280,8 @@ PHP_METHOD(FaissIndex, dimension)
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
-	intern = php_faiss_index_fetch_object(Z_OBJ_P(ZEND_THIS));
+	intern = (php_faiss_index_object *)((char *)(Z_OBJ_P(ZEND_THIS))
+		- XtOffsetOf(php_faiss_index_object, std));
 	if (!intern->index) {
 		zend_throw_exception_ex(zend_ce_exception, 0, "FaissIndex is not initialized");
 		RETURN_THROWS();
