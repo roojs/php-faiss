@@ -200,59 +200,6 @@ PHP_METHOD(FaissIndex, add)
 	efree(data);
 }
 
-PHP_METHOD(FaissIndex, addBatch)
-{
-	zval *flat_arr;
-	zend_long dim;
-	float *data = NULL;
-	size_t len = 0;
-	int64_t n;
-	php_faiss_index_object *intern;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_ARRAY(flat_arr)
-		Z_PARAM_LONG(dim)
-	ZEND_PARSE_PARAMETERS_END();
-
-	intern = php_faiss_index_from_zend(Z_OBJ_P(ZEND_THIS));
-	if (!intern) {
-		RETURN_THROWS();
-	}
-
-	if (dim <= 0) {
-		zend_throw_exception_ex(zend_ce_exception, 0, "dimension must be positive");
-		RETURN_THROWS();
-	}
-
-	if (php_faiss_array_to_floats(flat_arr, &data, &len) == FAILURE || !data) {
-		zend_throw_exception_ex(zend_ce_exception, 0, "flat must be an array of numbers");
-		RETURN_THROWS();
-	}
-
-	if (len % (size_t)dim != 0) {
-		efree(data);
-		zend_throw_exception_ex(zend_ce_exception, 0, "flat length %zu is not a multiple of dimension %ld",
-			len, dim);
-		RETURN_THROWS();
-	}
-
-	if ((int)dim != intern->dimension) {
-		efree(data);
-		zend_throw_exception_ex(zend_ce_exception, 0, "batch dimension %ld does not match index dimension %d",
-			dim, intern->dimension);
-		RETURN_THROWS();
-	}
-
-	n = (int64_t)(len / (size_t)dim);
-	if (faiss_Index_add(intern->index, n, data) != 0) {
-		efree(data);
-		zend_throw_exception_ex(zend_ce_exception, 0, "faiss_Index_add failed");
-		RETURN_THROWS();
-	}
-
-	efree(data);
-}
-
 PHP_METHOD(FaissIndex, count)
 {
 	php_faiss_index_object *intern;
@@ -481,7 +428,6 @@ static const zend_function_entry php_faiss_index_methods[] = {
 	PHP_ME(FaissIndex, create, arginfo_faiss_create, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(FaissIndex, load, arginfo_faiss_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(FaissIndex, add, arginfo_faiss_add, ZEND_ACC_PUBLIC)
-	PHP_ME(FaissIndex, addBatch, arginfo_faiss_add_batch, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, count, arginfo_faiss_count, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, dimension, arginfo_faiss_dimension, ZEND_ACC_PUBLIC)
 	PHP_ME(FaissIndex, save, arginfo_faiss_save, ZEND_ACC_PUBLIC)
