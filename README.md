@@ -8,6 +8,7 @@ Sibling repo at `gitlive/php-fiass` (used by `Pman.Translate` RAG indexer).
 
 - PHP 8.4 dev headers (`php8.4-dev` or matching API version)
 - `libfaiss-dev` and runtime BLAS/LAPACK (`libblas-dev`, `liblapack-dev` — pulled in by `libfaiss-dev` on Ubuntu)
+- `libglib2.0-dev` (wrapper logging)
 - `build-essential`, `g++`
 
 Build on **each host** against that host’s PHP — do not copy `faiss.so` between machines.
@@ -17,7 +18,7 @@ Build on **each host** against that host’s PHP — do not copy `faiss.so` betw
 ```bash
 cd php-fiass
 phpize
-./configure --enable-faiss
+./configure
 make -j$(nproc)
 ```
 
