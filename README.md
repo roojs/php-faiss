@@ -9,8 +9,7 @@ The C++ wrapper (`faiss_c_wrapper.cpp` / `faiss_c_wrapper.h`) is part of this tr
 - PHP 8.4 dev headers (`php8.4-dev` or matching API version)
 - `libfaiss-dev` (BLAS and LAPACK come with it)
 - `libglib2.0-dev` (wrapper logging)
-- `libgomp-dev`
-- `build-essential`, `g++`
+- `build-essential`, `g++` (`g++` provides OpenMP)
 
 **amd64 only.** Deploy hosts are Debian 13 (`trixie`). Ubuntu 25.04+ (`plucky`, `questing`, `resolute`) is for local testing on the same architecture.
 

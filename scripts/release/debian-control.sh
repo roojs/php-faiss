@@ -62,8 +62,7 @@ Build-Depends: debhelper-compat (= 13),
                pkgconf,
                g++,
                libfaiss-dev,
-               libglib2.0-dev,
-               libgomp-dev
+               libglib2.0-dev
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://github.com/roojs/php-fiass

@@ -18,7 +18,7 @@ modules itself, so fpm or apache added later still loads faiss.
 
 Build (amd64), after `libfaiss-dev` and `libglib2.0-dev` are installed:
 
-  sudo apt-get install -y build-essential dpkg-dev debhelper dh-php php-all-dev pkgconf g++ libfaiss-dev libglib2.0-dev libgomp-dev
+  sudo apt-get install -y build-essential dpkg-dev debhelper dh-php php-all-dev pkgconf g++ libfaiss-dev libglib2.0-dev
   ./scripts/release/debian-control.sh
   dpkg-buildpackage -us -uc -b
 

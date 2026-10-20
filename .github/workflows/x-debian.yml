@@ -44,7 +44,7 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends \
             build-essential dpkg-dev debhelper dh-php php-all-dev pkgconf fakeroot \
-            g++ libfaiss-dev libglib2.0-dev libgomp-dev
+            g++ libfaiss-dev libglib2.0-dev
 
       - name: Build Debian package (amd64)
         env:
