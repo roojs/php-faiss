@@ -2,54 +2,17 @@
 
 A PHP extension that links against the FAISS library (`libfaiss`). It exposes `FaissIndex` for local HNSW indexes: create, load, add, count, dimension, save, and search.
 
-The C++ wrapper (`faiss_c_wrapper.cpp` / `faiss_c_wrapper.h`) is part of this tree. Distro `libfaiss-dev` ships the C++ headers and a static library, not this wrapper.
+## Install
 
-## Prerequisites
-
-- PHP 8.4 dev headers (`php8.4-dev` or matching API version)
-- `libfaiss-dev` (BLAS and LAPACK come with it)
-- `libglib2.0-dev` (wrapper logging)
-- `build-essential`, `g++` (`g++` provides OpenMP)
-
-**amd64 only.** Deploy hosts are Debian 13 (`trixie`). Ubuntu 25.04+ (`plucky`, `questing`, `resolute`) is for local testing on the same architecture.
-
-`libfaiss-dev` is the distro package. Build on **each host** against that host’s PHP — do not copy `faiss.so` between machines.
-
-## Build
-
-```bash
-cd php-fiass
-phpize
-./configure
-make -j$(nproc)
-```
-
-Output: `modules/faiss.so`
-
-Optional install:
-
-```bash
-sudo make install
-```
-
-Or load without installing:
-
-```bash
-php -d extension=$PWD/modules/faiss.so test_faiss.php
-```
-
-Restart php-fpm / Apache after enabling for those SAPIs.
-
-## Debian package
-
-`php-faiss` is an empty package that depends on the suite's default module, the same way `php-imagick` depends on `php8.4-imagick`. The module itself is `php8.4-faiss`, or `php8.5-faiss` where that suite's default PHP is 8.5. `dh-php` registers it and enables it for every SAPI of that version — `cli`, `fpm`, `apache2`, and the rest. A SAPI installed later enables registered modules on its own.
+Debian packages are published from the [roojs package repositories](https://roojs.github.io/repos/). That page has the APT setup. Install the meta package; it depends on the module for the default PHP on that suite (`php8.4-faiss` or `php8.5-faiss`).
 
 ```bash
 sudo apt-get install php-faiss
-php -m | grep faiss
 ```
 
-`scripts/release.sh` tags `vX.Y.Z` from `CHANGELOG.md` and pushes it. GitHub Actions builds the suite `.deb` files and attaches them all to that one release. The [roojs APT repository](https://roojs.github.io/repos/) can pull that release in later. Do not run the release script from an agent.
+## Build
+
+See [BUILD.md](BUILD.md).
 
 ## API
 
@@ -62,11 +25,6 @@ php -m | grep faiss
 | `dimension(): int` | Index dimension |
 | `save(string $path)` | Persist index |
 | `searchWithIds(array $query, int $k, array $ids): array` | `[['id'=>int,'distance'=>float], …]`; restrict to `ids` via `IDSelectorBatch`. Empty `$ids` → `[]`. |
-
-## Notes
-
-- Links against system `libfaiss` (static `libfaiss.a` plus BLAS, LAPACK, and OpenMP). Does not vendor FAISS sources.
-- The index is freed by the object destructor. `unset($idx)` releases it immediately.
 
 ## Artificial Intelligence Usage
 
