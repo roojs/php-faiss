@@ -1,0 +1,40 @@
+Source: php-faiss
+Section: php
+Priority: optional
+Maintainer: Alan Knowles <alan@roojs.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-php,
+               php-all-dev,
+               pkgconf,
+               g++,
+               libfaiss-dev,
+               libglib2.0-dev,
+               libgomp-dev
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/roojs/php-fiass
+
+Package: php8.4-faiss
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${php:Depends}
+Provides: php-faiss
+Description: FAISS similarity search for PHP 8.4
+ FaissIndex builds and searches an HNSW index through libfaiss.
+ .
+ This package is built for PHP 8.4. phpenmod registers the
+ faiss module for every SAPI of that version (cli, fpm, apache2,
+ and the rest). A SAPI installed later picks the module up from
+ that registry.
+
+Package: php-faiss
+Architecture: all
+Depends: php8.4-faiss,
+         ${misc:Depends}
+Description: FAISS similarity search for PHP
+ FaissIndex builds and searches an HNSW index through libfaiss.
+ .
+ This is an empty package that depends on the default PHP version
+ (currently 8.4).
+

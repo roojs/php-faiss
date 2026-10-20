@@ -1,0 +1,27 @@
+Debian package for the faiss PHP extension.
+
+`scripts/release/debian-control.sh` writes one module package per
+version from `phpquery -V`: `php8.4-faiss`, `php8.5-faiss`, and so on.
+It also writes an empty `php-faiss` package that depends on the
+default (`php` package's dependency, currently `php8.4-faiss` here).
+`dpkg-buildpackage` then builds those packages. `dh-php` installs the
+module packages only:
+
+  /usr/lib/php/<api>/faiss.so
+  /etc/php/<version>/mods-available/faiss.ini
+
+and the maintainer scripts call `php_invoke enmod <version> ALL faiss`.
+That is the same hook packaged PHP modules use: it registers the module
+and enables it for every SAPI of that version (`cli`, `fpm`, `apache2`,
+and the rest). A SAPI package installed afterwards enables registered
+modules itself, so fpm or apache added later still loads faiss.
+
+Build (amd64), after `libfaiss-dev` and `libglib2.0-dev` are installed:
+
+  sudo apt-get install -y build-essential dpkg-dev debhelper dh-php php-all-dev pkgconf g++ libfaiss-dev libglib2.0-dev libgomp-dev
+  ./scripts/release/debian-control.sh
+  dpkg-buildpackage -us -uc -b
+
+GitHub Actions does this for each suite and appends `+<suite>` to the
+Debian version so the packages on the one GitHub Release have distinct
+filenames. `scripts/release.sh` tags; it does not build the packages.

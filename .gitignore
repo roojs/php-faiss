@@ -16,6 +16,15 @@
 faiss.la
 autom4te.cache/
 build/
+build-*/
+debian/php*-faiss.php
+debian/php*-faiss/
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.debhelper.log
+debian/*.debhelper
 run-tests.php
 tests/
 Makefile.objects

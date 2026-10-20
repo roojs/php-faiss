@@ -1,0 +1,68 @@
+#!/usr/bin/make -f
+# Copyright (c) 2026 Roo J Solutions Ltd.
+# Author: Leon <leon@roojs.com>
+# Licensed under the PHP License, version 3.01. See the upstream LICENSE.
+
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export PHP_RPATH = no
+
+# One .so per PHP version reported by the distro. dh-php then enables
+# the module for every SAPI of that version.
+PHP_VERSIONS := $(shell phpquery -V 2>/dev/null)
+ifeq ($(strip $(PHP_VERSIONS)),)
+$(error phpquery -V returned no PHP versions; install php-all-dev)
+endif
+
+%:
+	dh $@ --with php
+
+# The extension is phpize'd inside build-<version>/. Do not autoreconf
+# or distclean a developer phpize tree left in the repository root.
+override_dh_autoreconf:
+	true
+
+override_dh_autoreconf_clean:
+	true
+
+override_dh_update_autotools_config:
+	true
+
+override_dh_auto_configure:
+	set -eu; \
+	for v in $(PHP_VERSIONS); do \
+		rm -rf "build-$$v"; \
+		mkdir "build-$$v"; \
+		cp config.m4 php_faiss.c php_faiss.h faiss_c_wrapper.cpp faiss_c_wrapper.h "build-$$v/"; \
+		( cd "build-$$v" && phpize$$v && ./configure --with-php-config="/usr/bin/php-config$$v" ); \
+	done
+
+override_dh_auto_build:
+	set -eu; \
+	for v in $(PHP_VERSIONS); do \
+		$(MAKE) -C "build-$$v"; \
+	done
+
+override_dh_auto_test:
+	true
+
+override_dh_auto_install:
+	true
+
+override_dh_php:
+	set -eu; \
+	for v in $(PHP_VERSIONS); do \
+		grep -q "^Package: php$$v-faiss$$" debian/control \
+			|| { echo "debian/control has no php$$v-faiss; run scripts/release/debian-control.sh" >&2; exit 1; }; \
+		printf 'mod build-%s/modules/faiss.so\nmod debian/faiss.ini\n' "$$v" > "debian/php$$v-faiss.php"; \
+		dh_php -p "php$$v-faiss" --php-version="$$v"; \
+	done
+
+override_dh_auto_clean:
+	rm -rf build-*
+	rm -f debian/php*-faiss.php
+
+override_dh_clean:
+	rm -rf build-*
+	rm -f debian/php*-faiss.php
+	dh_clean
